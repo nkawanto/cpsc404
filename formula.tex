@@ -1,5 +1,8 @@
 \documentclass{article}
 \usepackage[utf8]{inputenc}
+\usepackage{mathtools}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
 
 \title{404}
 \author{nkawanto }
@@ -30,5 +33,213 @@
 
 \section{Lecture 2: External sorting}
 \begin{itemize}
+\item Merge Sort Overview:
+    \begin{itemize}
+    \item Sort phase: 
+        \begin{itemize}
+            \item read in B pages of data each time, sort internally (in memory)
+            \item suppose entire data is in $m \cdot B$ pages
+            \item sort phase produces m \textbf{sorted runs (sublists)} of B pages each
+            \item each \textbf{sorted sublist (SSL)} is locally sorted
+            \item (we are left with having to merge those m SSLs into single sorted file)
+        \end{itemize}
+    \item Merge phase: 
+        \begin{itemize}
+            \item repeatedly merge sorted runs
+            \item pass 0: sort phase
+            \item pass 1: produce m/2 sorted runs of 2B pages each
+            \item pass 2: produce m/4 sorted runs of 4B pages each
+            \item pass i: produce m/i sorted runs of $i \cdot B$ pages each
+            \item ...
+            \item continue until 1 sorted run of $m \cdot B$ pages produced
+            \item 2-way merge can be optimized into k-way merge, where $size(k) <= size(B) - 1$
+        \end{itemize}
+    \end{itemize}
+\item SSLS = $\displaystyle\floor*{\frac{\#file\ pages}{\#RAM\ pages}}$
+\item "vanilla" mergesort still bad ($log_{2}n$ passes)
+\item 2PMMS: 2 reads + 2 writes per block (still dont understand)
+    \subitem $access_{avg}$ = seek + rot.delay + transfer
+\item improving  runtime of TPMMS:
+    \begin{itemize}
+        \item group blocks by cylinder (cylindrification) (y)
+        \item prefetching and double buffering:
+            \begin{itemize}
+                \item seek and rot. latency are made negligible for phase 1 (thanks to cylindrification) and are minimized for phase 2 (thanks for prefetching)
+                \item total time for each pass for phase 2 $\simeq$ 1 R + 1 W
+            \end{itemize}
+    \end{itemize}
+\item Estimate IO cost $==$ \# page IOs incurred:
+    \begin{itemize}
+        \item block (page) size = 4K
+        \item filesize: 1GB $\rightarrow$ $\frac{1000\cdot 2^{10}}{4\cdot 2^{10}} = 256000 pages$
+        \item RAM = 50MB
+        \item phase 1 (sort): $256000\ pages \cdot (R+W)$
+        \item phase 2 (merge): $256000\ pages \cdot (R+W)$
+        \item total= 4 $\cdot$ 256000 IOs
+    \end{itemize}
+\item Estimate elapsed IO time
+    \begin{itemize}
+        \item $S_{avg} = 8ms$
+        \item $\gamma_{avg} = 7ms$
+        \item $transfer = 0.5ms$
+        \item Elapsed time = $4\cdot 256000\cdot (8+7 +0.5)ms$
+    \end{itemize}
+\item Estimate elapsed IO time (minimizing IO)
+    \begin{itemize}
+        \item Sort phase:
+            \begin{itemize}
+                $(R+W)\cdot \#$ pages in file + $(rand.\ accesses\ for\ every\ B\ pages\ (\gamma_{avg} + S_{avg}))[negligible]$
+            \end{itemize}
+        \item Merge phase:
+            \begin{itemize}
+                \item B = $\frac{50MB RAM}{4K\ pages} = 12800\ pages$
+                \item SSL = 20
+                \item random reads = $\floor*{\frac{12800}{20}} = 609$
+                \item random writes = $12800-20\cdot 609$
+                \item $\displaystyle{256000\cdot (R+W)\cdot 0.5ms+{\ceil*{\frac{256000}{609}} + \ceil*{\frac{256000}{620}}}}$
+            \end{itemize}
+    \end{itemize}
+\end{itemize}
+
+\section{Lecture 3: B+Trees Basics}
+\begin{itemize}
+    \item Data entries:
+        \begin{itemize}
+            \item rid: record id
+            \item k as key value, denote its corresponding entry as k*
+            \item alt1: k* = data with record value k
+            \item alt2: k* = <k, rid of data record with search key key k>
+                \subitem k points to rid and entry
+            \item alt3: k* = <k, list<rids of data records with search key k>[]>
+                \subitem k points to list<rid, entry>
+        \end{itemize}
+    \item 1 node of B+Tree = 1 page
+\end{itemize}
+
+\section{Lecture 4: B+Trees}
+\begin{itemize}
+    \item B+Tree structure
+        \begin{itemize}
+            \item internal node: <key, pointer> pair
+            \item An internal node has m <key, pointer> pairs + 1 additional pointer
+            \item Insert/delete cost $log_{F}N$
+                \subitem F = avg fanout (i.e. \# children), tends to be in hundreds; N = \# leaf pages, storing data entries
+            \item Minimum 50\% occupancy (except for root), each internal node contains $d\leq m\leq 2d$ entries. $d$ is order of tree
+            \item Each leaf has to be at least half full
+            \item Index entry (held by internal node): <key, pointer>
+            \item Leaf page (leaf node): contains $d$ data entries (can be alt1/alt2/alt3)
+            \item  
+            \item 1 node of B+Tree = 1 page
+            \item Typical order: 100 ($d$ = 100). means for each internal node (minus root), $100\leq \#entries\leq 2\cdot 100$.
+            \item Fill factor = \# entries in a node/max possible
+                \subitem \# entries in a node/2d, where d = order of B+Tree
+            \item Average fill-factor = ln(2) = 66.5\% = 0.665
+                \subitem $\rightarrow$ average fanout $\simeq$ $2d \cdot ln(2) = 133$
+            \item root is $1 \leq \#entries \leq 2d$.
+        \end{itemize}
+    \item max \# <key,pointer> pairs/page?
+        \subitem $\floor*{\frac{pagesize}{(keysize + ptrsize)}}$
+    \item Remember that average fanout = 133
+    \item Typical capacities: 
+        \begin{itemize}
+            \item Level 1: 1 page = 8KB (assuming 8K/page)
+            \item Level 2: 133 pages = 1MB (approx.)
+            \item Level 3: $133^2$ pages = 133MB (approx.)
+            \item Level n: $\displaystyle{133^{n-1}}$ pages
+        \end{itemize}
+    \item Min B+Tree height:
+        \begin{itemize}
+            \item 4K block, 12b key, 8b ptr. For a file occupying b (logical) blocks, find min/max/avg height of B+tree index
+            \item $\floor*{\frac{4096}{12+8}} = 204$
+            \item min height = $\ceil*{log_{204+1}b}$
+            \item max height = $\ceil*{log_{204+1}b} + 1$
+            \item avg height = $\displaystyle{\ceil*{log_{(204 + 1)\cdot 0.665}(b/0.665)}}$
+        \end{itemize}
+\end{itemize}
+
+\section{Lecture 4: B+Trees Insert/Delete}
+\begin{itemize}
+    \item Not much important here, just insert/delete mechanism
+    \item https://www.cs.usfca.edu/~galles/visualization/BPlusTree.html
+    \item Order = 1/2(max \# of nodes)
+    \item Root must have at least one entry and 2 pointers
+    \item Repeating last lecture, every internal node (minus root): $d \leq entries \leq 2d$ and leaf nodes must be $\geq$ 50\% full
+    \item Insertion enforces this occupancy constraint as DE gets added to B+Tree
+    \item Merge (from deletion) causes an entry to be deleted from parent, merging propagates up recursively
+    \item In extreme case, tree may become 1 level shorter.
+\end{itemize}
+
+\section{Lecture 5: B+Trees Optimizations}
+\begin{itemize}
+    \item Prefix Key Compression
+    \begin{itemize}
+        \item Important to increase fanout
+            \subitem search key "david" and "devarakonda", "david" can be abbreviated into "dav", shorten keys but keeping them unique
+    \end{itemize}
+    \item Bulk loading
+        \begin{itemize}
+            \item Option 1: repeated insertions
+            \begin{itemize}
+                \item Slow
+                \item Does not ensure sequential storage of leaves
+            \end{itemize}
+            \item Option 2: bulk loading
+            \begin{itemize}
+                \item Has advantages for concurrency control
+                \item Fewer IOs during build
+                \item Leaves will be stored sequentially (and linked)
+                \item Can control "fill factor" on pages
+            \end{itemize}
+        \end{itemize}
+        \item Insert/deletes leave tree height-balanced: $O(log_F N)$ cost
+        \item High fanout means depth rarely more than 4 or 5
+        \item Almost always better than simply maintaining a sorted filesize
+        \item Key compression increases fanout, reduces height
+        \item Bulk loading can be much faster than repeated inserts for large dataset
+        \item Widely used index in DBMS because of its versatility; one of the most optimized components of a DBMS
+\end{itemize}
+
+\section{Lecture 6: Static hashing}
+\begin{itemize}
+    \item Hash-based indexes are best for equality selections
+        \subitem no traversal; direct computation where DE k* should be, given value k.
+    \item Cannot support range searches
+    \item Static vs dynamic hashing:
+    \begin{itemize}
+        \item static hashing assumes file doesn't change/doesn't change much
+        \item dynamic hashing specifically designed to handle files that undergo many and frequent updates
+    \end{itemize}
+    \item Static hashing:
+    \begin{itemize}
+        \item primary pages fixed, allocated sequentially, never de-allocated; overflow pages (imagine Java hash<linkedlist>) used if needed.
+        \item $h(k)\ mod\ M$ = bucket to which DE with key k (i.e. k*) belongs. M = \# of buckets
+        \item [[page, page, page],[page],[page],...]
+        \item Buckets contain DE (alt1, alt2, alt3)
+        \item Long oferflow chains can develop and degrade performance (when update distribution is skewed). What would happen if we insert many records with keys hashed to $MOD\ M$?
+            \subitem Extendible Hashing (EH) and Linear Hashing (LH): two major dynamic hashing techniques to fix this problem.
+        \item both EH and LH attempt to "techniques the buckets to avoid or minimize overflow.
+    \end{itemize}
+\end{itemize}
+
+\section{Lecture 7: Dynamic hashing}
+\begin{itemize}
+    \item Extendible Hashing:
+    \begin{itemize}
+        \item Motivation: avoid/minimize overflow upon insertions. Reorganize (i.e. rehash) file by, say, doubling \# of buckets?
+            \subitem R/W all pages is expensive!
+        \item Idea: use directory of pointers to buckets (think dirent)
+            \subitem static hashing has no directory
+        \item We double the logical \# of buckets by doubling directory; splitting just the bucket that overflowed.
+    \end{itemize}
+    \item If directory fits in memory, equality search answered with one disk access; else two (for alt1 DE).
+    \item Directory can grow large if distribution of hash values is skewed.
+    \item Delete: if removal of DE makes bucket empty,
+    \begin{itemize}
+        \item check to see if all 'split images' can be merged (if a bucket is merged with its split image, we should decrement its Local Directory by 1)
+        \item if each directory elements point to the same bucket as its split image, can halve directory
+        \item rarely done in practice (leave room for future insertions)
+    \end{itemize}
+    \item \textbf{need to read more on this}
+\end{itemize}
 
 \end{document}
