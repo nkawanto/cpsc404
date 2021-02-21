@@ -1,0 +1,34 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+
+\title{404}
+\author{nkawanto }
+\date{February 2021}
+
+\begin{document}
+
+\maketitle
+
+\section{Lecture 1: Intro and Storage}
+\begin{itemize}
+\item $seek_{avg}$:
+    \subitem $1 + \displaystyle\frac{avg\ tracks\ to\ sweep\ over}{\#cylinder}, avg = \frac{1}{3}tracks$, something to do with pascal triangle
+\item {Rot. latency ($\gamma$):}
+    \begin{itemize}
+        \item $\gamma_{min} = 0$
+        \item $\gamma_{max} = 1/RPM$
+        \item $\gamma_{avg} = 1/2 max$
+    \end{itemize}
+\item Transfer (R/W a block) time:
+    \subitem $\displaystyle\frac{\#sectors/page}{\#sectors/track}(\gamma_{max})$
+\item Read time:
+    \begin{itemize}
+        \item random = seek + rotational delay + transfer for each page
+        \item sequential = (seek + rotational delay)[first page] + (transfer)[all pages]
+    \end{itemize}
+\end{itemize}
+
+\section{Lecture 2: External sorting}
+\begin{itemize}
+
+\end{document}
